@@ -1,0 +1,185 @@
+// Database schema (DESIGN_SPEC §3). Tables and columns are snake_case in
+// PostgreSQL and camelCase in TypeScript, linked by @map / @@map.
+//
+// CHECK constraints cannot be declared here; they are hand-added to the
+// migration SQL in prisma/migrations/.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../apps/api/src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+  // The connection URL lives in prisma.config.ts (Prisma 7).
+}
+
+enum ChartStatus {
+  NOT_YET_OPEN
+  OPEN
+  CLOSED
+  CHART_LOCKED
+
+  @@map("chart_status")
+}
+
+enum PassengerStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  WAITLIST_EXPIRED
+
+  @@map("passenger_status")
+}
+
+model Train {
+  id     Int    @id @default(autoincrement())
+  number String @unique
+  name   String
+
+  runs TrainRun[]
+
+  @@map("train")
+}
+
+// One train on one journey date. Owns the booking window and the chart state.
+model TrainRun {
+  id              Int         @id @default(autoincrement())
+  trainId         Int         @map("train_id")
+  journeyDate     DateTime    @map("journey_date") @db.Date
+  bookingOpensAt  DateTime    @map("booking_opens_at") @db.Timestamptz
+  bookingClosesAt DateTime    @map("booking_closes_at") @db.Timestamptz
+  chartStatus     ChartStatus @map("chart_status")
+  chartPreparedAt DateTime?   @map("chart_prepared_at") @db.Timestamptz
+
+  train           Train            @relation(fields: [trainId], references: [id])
+  coaches         Coach[]
+  inventories     ClassInventory[]
+  bookings        Booking[]
+  seatAllocations SeatAllocation[]
+
+  @@unique([trainId, journeyDate])
+  @@map("train_run")
+}
+
+model TravelClass {
+  code String @id
+  name String
+
+  coaches     Coach[]
+  inventories ClassInventory[]
+  bookings    Booking[]
+
+  @@map("travel_class")
+}
+
+model Coach {
+  id         Int    @id @default(autoincrement())
+  trainRunId Int    @map("train_run_id")
+  classCode  String @map("class_code")
+  label      String
+  ordinal    Int
+
+  trainRun    TrainRun    @relation(fields: [trainRunId], references: [id])
+  travelClass TravelClass @relation(fields: [classCode], references: [code])
+  seats       Seat[]
+
+  @@unique([trainRunId, label])
+  @@map("coach")
+}
+
+model Seat {
+  id         Int @id @default(autoincrement())
+  coachId    Int @map("coach_id")
+  seatNumber Int @map("seat_number")
+
+  coach       Coach            @relation(fields: [coachId], references: [id])
+  allocations SeatAllocation[]
+
+  @@unique([coachId, seatNumber])
+  @@map("seat")
+}
+
+// Capacity per class. Booking and cancellation lock this row FOR UPDATE.
+// The confirmed count is computed under that lock, never stored.
+model ClassInventory {
+  trainRunId         Int    @map("train_run_id")
+  classCode          String @map("class_code")
+  capacity           Int
+  nextWaitlistNumber Int    @default(1) @map("next_waitlist_number")
+
+  trainRun    TrainRun    @relation(fields: [trainRunId], references: [id])
+  travelClass TravelClass @relation(fields: [classCode], references: [code])
+  bookings    Booking[]
+
+  @@id([trainRunId, classCode])
+  @@map("class_inventory")
+}
+
+model AppUser {
+  id    Int    @id @default(autoincrement())
+  email String @unique // stored lower-cased
+
+  bookings Booking[]
+
+  @@map("app_user")
+}
+
+// One PNR. `id` is internal (joins only); `pnr` is the public handle.
+// Booking status is derived from passengers, never stored.
+model Booking {
+  id             BigInt   @id @default(autoincrement())
+  pnr            String   @unique @db.Char(10)
+  userId         Int      @map("user_id")
+  trainRunId     Int      @map("train_run_id")
+  classCode      String   @map("class_code")
+  idempotencyKey String   @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user           AppUser        @relation(fields: [userId], references: [id])
+  trainRun       TrainRun       @relation(fields: [trainRunId], references: [id])
+  travelClass    TravelClass    @relation(fields: [classCode], references: [code])
+  classInventory ClassInventory @relation(fields: [trainRunId, classCode], references: [trainRunId, classCode])
+  passengers     Passenger[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([trainRunId, classCode])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("booking")
+}
+
+// One traveller. The status lives here, per passenger.
+// waitlistNumber is permanent once issued (kept even after promotion).
+model Passenger {
+  id             BigInt          @id @default(autoincrement())
+  bookingId      BigInt          @map("booking_id")
+  position       Int
+  name           String
+  status         PassengerStatus
+  waitlistNumber Int?            @map("waitlist_number")
+
+  booking        Booking         @relation(fields: [bookingId], references: [id])
+  seatAllocation SeatAllocation?
+
+  @@unique([bookingId, position])
+  @@index([bookingId])
+  @@index([status, waitlistNumber])
+  @@map("passenger")
+}
+
+// Written only by chart preparation.
+// UNIQUE(train_run_id, seat_id) is the last line of defence against double allocation.
+model SeatAllocation {
+  passengerId BigInt @id @map("passenger_id")
+  trainRunId  Int    @map("train_run_id")
+  seatId      Int    @map("seat_id")
+
+  passenger Passenger @relation(fields: [passengerId], references: [id])
+  trainRun  TrainRun  @relation(fields: [trainRunId], references: [id])
+  seat      Seat      @relation(fields: [seatId], references: [id])
+
+  @@unique([trainRunId, seatId])
+  @@map("seat_allocation")
+}

@@ -8,3 +8,4 @@ prisma/migrations
 # Approved design docs: keep their hand-written formatting.
 docs/
 CLAUDE.md
+apps/api/src/generated

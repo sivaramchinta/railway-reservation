@@ -14,6 +14,7 @@ export default defineConfig([
     '**/coverage/',
     '**/next-env.d.ts',
     'prisma/migrations/',
+    'apps/api/src/generated/',
   ]),
 
   // Base rules for every file.
