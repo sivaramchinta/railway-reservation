@@ -150,6 +150,7 @@ npm run dev                          # api + web
 npm run lint && npm run typecheck    # must pass before every commit
 npm run format                       # Prettier (docs/ and CLAUDE.md are excluded)
 npm test                             # all tests
+npm run test:coverage                # api tests + 100% coverage gate on src/domain/
 ```
 
 ## Repository layout

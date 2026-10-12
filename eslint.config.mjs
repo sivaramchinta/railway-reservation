@@ -50,10 +50,27 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
 
-  // Project-wide rules (CLAUDE.md: no console.log, use the pino logger).
+  // Project-wide hard rules from CLAUDE.md.
   {
     rules: {
+      // Use the pino logger.
       'no-console': 'error',
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Use crypto.randomInt (PNRs must be unguessable).',
+        },
+        {
+          property: '$queryRawUnsafe',
+          message: 'Use the $queryRaw tagged template (parameterised).',
+        },
+        {
+          property: '$executeRawUnsafe',
+          message: 'Use the $executeRaw tagged template (parameterised).',
+        },
+      ],
     },
   },
 
