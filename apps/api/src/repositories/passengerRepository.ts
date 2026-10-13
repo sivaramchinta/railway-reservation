@@ -47,3 +47,12 @@ export async function insertPassengers(
     })),
   });
 }
+
+/** Cancels every still-active (CONFIRMED / WAITLISTED) passenger of a booking. Returns how many changed. */
+export async function cancelActivePassengers(tx: TxClient, bookingId: bigint): Promise<number> {
+  const result = await tx.passenger.updateMany({
+    where: { bookingId, status: { in: ['CONFIRMED', 'WAITLISTED'] } },
+    data: { status: 'CANCELLED' },
+  });
+  return result.count;
+}

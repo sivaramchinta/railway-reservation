@@ -6,7 +6,13 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { prisma } from '../src/db';
 import { type CreateBookingResult, createBooking } from '../src/services/bookingService';
-import { createUsers, currentRunId, openBookingWindow, resetDb } from './helpers/db';
+import {
+  classOutcome as outcome,
+  createUsers,
+  oneTo,
+  openBookingWindow,
+  resetDb,
+} from './helpers/db';
 import { expectInvariantsHold } from './invariants';
 
 beforeEach(async () => {
@@ -21,33 +27,6 @@ afterEach(async () => {
 afterAll(async () => {
   await prisma.$disconnect();
 });
-
-interface ClassOutcome {
-  confirmed: number;
-  waitlistNumbers: number[];
-  nextWaitlistNumber: number;
-}
-
-/** What the DATABASE says happened in a class (not what the callers were told). */
-async function outcome(classCode: string): Promise<ClassOutcome> {
-  const passengers = await prisma.passenger.findMany({
-    where: { booking: { classCode } },
-    select: { status: true, waitlistNumber: true },
-  });
-  const inventory = await prisma.classInventory.findUniqueOrThrow({
-    where: { trainRunId_classCode: { trainRunId: await currentRunId(), classCode } },
-  });
-  return {
-    confirmed: passengers.filter((p) => p.status === 'CONFIRMED').length,
-    waitlistNumbers: passengers
-      .filter((p) => p.status === 'WAITLISTED')
-      .map((p) => p.waitlistNumber ?? -1)
-      .sort((a, b) => a - b),
-    nextWaitlistNumber: inventory.nextWaitlistNumber,
-  };
-}
-
-const oneTo = (n: number): number[] => Array.from({ length: n }, (_, i) => i + 1);
 
 describe('concurrent bookings', () => {
   it('edge case 1: 120 concurrent single-passenger bookings on SL (capacity 40) → exactly 40 CONFIRMED, WL 1..80', async () => {

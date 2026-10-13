@@ -69,3 +69,21 @@ export async function findBookingByIdempotencyKey(
 export async function getBookingById(tx: TxClient, id: bigint): Promise<BookingRecord> {
   return tx.booking.findUniqueOrThrow({ where: { id }, select: bookingSelect });
 }
+
+export interface BookingOwnership {
+  id: bigint;
+  userId: number;
+  trainRunId: number;
+  classCode: string;
+}
+
+/** Who owns a PNR and which class lock guards it. These never change after insert. */
+export async function findBookingOwnership(
+  tx: TxClient,
+  pnr: string,
+): Promise<BookingOwnership | null> {
+  return tx.booking.findUnique({
+    where: { pnr },
+    select: { id: true, userId: true, trainRunId: true, classCode: true },
+  });
+}

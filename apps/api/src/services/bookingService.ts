@@ -1,13 +1,11 @@
 import { CreateBookingRequestSchema, IdempotencyKeySchema } from '@railway/shared';
 import { prisma, runInTransaction } from '../db';
 import { decideStatuses } from '../domain/allocation';
-import { type BookingStatus, deriveBookingStatus } from '../domain/bookingStatus';
 import { effectiveChartStatus } from '../domain/chartState';
 import { AppError, InvariantViolationError } from '../domain/errors';
-import { assertPassengerTransition, type PassengerStatus } from '../domain/passengerState';
+import { assertPassengerTransition } from '../domain/passengerState';
 import { generatePnr } from '../domain/pnr';
 import {
-  type BookingRecord,
   findBookingByIdempotencyKey,
   getBookingById,
   insertBookingWithPnr,
@@ -19,22 +17,10 @@ import {
   waitlistExists,
 } from '../repositories/passengerRepository';
 import { dbNow, findCurrentRunId, getRun } from '../repositories/trainRunRepository';
+import { type BookingView, toView } from './bookingView';
 import { parseOrThrow } from './validation';
 
 export const MAX_PNR_ATTEMPTS = 5;
-
-export interface BookingView {
-  pnr: string;
-  classCode: string;
-  createdAt: Date;
-  status: BookingStatus;
-  passengers: {
-    position: number;
-    name: string;
-    status: PassengerStatus;
-    waitlistNumber: number | null;
-  }[];
-}
 
 export interface CreateBookingResult {
   booking: BookingView;
@@ -143,14 +129,4 @@ export async function createBooking(
 
     return { booking: toView(await getBookingById(tx, bookingId)), created: true };
   });
-}
-
-export function toView(record: BookingRecord): BookingView {
-  return {
-    pnr: record.pnr,
-    classCode: record.classCode,
-    createdAt: record.createdAt,
-    status: deriveBookingStatus(record.passengers.map((p) => p.status)),
-    passengers: record.passengers,
-  };
 }
