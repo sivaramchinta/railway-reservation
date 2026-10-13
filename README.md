@@ -11,11 +11,30 @@ cp .env.example .env                 # once
 docker compose up -d db              # PostgreSQL 16
 npm install
 npm run db:migrate && npm run db:seed
-npm run dev -w @railway/api          # API on http://localhost:4000
+npm run dev                          # API on :4000 + web on http://localhost:3000
 ```
 
 `npm run db:reset` wipes the dev database, re-applies migrations and reseeds.
-Use it to start the walkthrough below from scratch.
+Use it to start the walkthrough or the QA checklist below from scratch.
+
+## Manual QA checklist (browser)
+
+Open http://localhost:3000 in two browser profiles (or one normal + one private
+window): **admin** signs in as `admin@example.com`, **user** as any other email.
+
+1. [ ] User: sign in → the booking form appears; the stepper shows **Not open**.
+2. [ ] Admin: **Admin** page → _Open window_. Within 5 s the user's stepper shows **Booking open** (no reload).
+3. [ ] User: submit with a blank name → inline error; nothing is booked.
+4. [ ] User: book AC 6 + 6 + 6 passengers → each shows **Confirmed** with a big PNR.
+5. [ ] User: book AC with 4 passengers → **Partially confirmed**, 2 confirmed + WL 1, WL 2, and the "group was split" note.
+6. [ ] User: book AC with 1 passenger → **Waitlisted, WL 3**; the class selector now says "waitlist".
+7. [ ] User: _My bookings_ → _Cancel_ the first booking → confirm dialog → **Cancelled**; WL 3 is still waiting (seats go to the waitlist at chart time).
+8. [ ] Admin: _Close window_ → within 5 s the user's stepper shows **Booking closed**.
+9. [ ] Admin: _Prepare chart_ → summary AC: promoted 3, expired 0, 17 / 20; the seat map shows names in booking order.
+10. [ ] User: the split booking now shows seats (e.g. `A1-13` … `A1-16`) and "Promoted from WL 1/2"; no _Cancel_ buttons remain; the stepper shows **Chart prepared & locked**.
+
+Last run on 2026-10-13: all items passed (automated in headless Chrome against a
+throwaway database; screenshots reviewed).
 
 ## API walkthrough (curl)
 

@@ -1,4 +1,11 @@
-// Placeholder home page; the booking UI is built in Phase 7.
+import { BookingForm } from '../components/BookingForm';
+import { RequireSessionGate } from '../components/RequireSessionGate';
+
+// "/": sign in if needed, then the booking form.
 export default function HomePage() {
-  return <main>Mini Railway Reservation</main>;
+  return (
+    <RequireSessionGate>
+      <BookingForm />
+    </RequireSessionGate>
+  );
 }
