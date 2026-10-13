@@ -1,6 +1,8 @@
+import { MAX_PASSENGERS_PER_BOOKING } from '@railway/shared';
 import { InvariantViolationError } from './errors';
 
-export const MAX_PASSENGERS_PER_BOOKING = 6;
+// Defined once in the shared package (also used by the request schema).
+export { MAX_PASSENGERS_PER_BOOKING };
 
 export interface AllocationInput {
   /** Seats in the class. */

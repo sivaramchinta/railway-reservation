@@ -91,8 +91,9 @@ differs from what you expect, check its docs rather than guessing.
 - Booking and cancellation take exactly ONE lock: their `class_inventory` row.
 - Chart prep locks `train_run` FOR UPDATE, then ALL `class_inventory` rows
   ordered by `class_code`. Never take locks in any other order.
-- Window/time checks use database `now()` inside the locked transaction, never
-  `Date.now()`.
+- Window/time checks use the database clock inside the locked transaction, never
+  `Date.now()`: `clock_timestamp()` read after the lock, NOT `now()` (which is
+  frozen at transaction start). See DESIGN_SPEC §4 step 4.
 
 ### Raw SQL
 - Only in `apps/api/src/repositories/`. Only tagged templates (`$queryRaw`,

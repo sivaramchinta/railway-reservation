@@ -43,6 +43,9 @@
     "prisma@7.10.0": true,
     "@prisma/engines@7.10.0": true,
     "@swc/core@1.16.18": true,
-    "@parcel/watcher": false
+    "@parcel/watcher": false,
+    "cpu-features": false,
+    "ssh2": false,
+    "protobufjs": false
   }
 }
