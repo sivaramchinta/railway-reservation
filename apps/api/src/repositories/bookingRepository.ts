@@ -87,3 +87,57 @@ export async function findBookingOwnership(
     select: { id: true, userId: true, trainRunId: true, classCode: true },
   });
 }
+
+export interface BookingDetailsRecord {
+  pnr: string;
+  classCode: string;
+  trainRunId: number;
+  createdAt: Date;
+  passengers: {
+    position: number;
+    name: string;
+    status: PassengerStatus;
+    waitlistNumber: number | null;
+    seatAllocation: { seat: { seatNumber: number; coach: { label: string } } } | null;
+  }[];
+}
+
+const bookingDetailsSelect = {
+  pnr: true,
+  classCode: true,
+  trainRunId: true,
+  createdAt: true,
+  passengers: {
+    orderBy: { position: 'asc' },
+    select: {
+      position: true,
+      name: true,
+      status: true,
+      waitlistNumber: true,
+      seatAllocation: {
+        select: { seat: { select: { seatNumber: true, coach: { select: { label: true } } } } },
+      },
+    },
+  },
+} as const;
+
+/** One user's bookings, newest first, with seats (if any). */
+export async function listBookingDetails(
+  tx: TxClient,
+  userId: number,
+): Promise<BookingDetailsRecord[]> {
+  return tx.booking.findMany({
+    where: { userId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: bookingDetailsSelect,
+  });
+}
+
+/** One booking by PNR, only if it belongs to `userId`. */
+export async function findBookingDetails(
+  tx: TxClient,
+  userId: number,
+  pnr: string,
+): Promise<BookingDetailsRecord | null> {
+  return tx.booking.findFirst({ where: { pnr, userId }, select: bookingDetailsSelect });
+}

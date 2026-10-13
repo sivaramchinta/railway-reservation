@@ -148,6 +148,8 @@ npm install                          # install all workspaces
 npm run db:migrate                   # prisma migrate deploy
 npm run db:generate                  # prisma generate → apps/api/src/generated/prisma (typecheck runs it too)
 npm run db:seed                      # seed train, run, coaches, seats (idempotent)
+npm run db:reset                     # wipe dev DB, migrate, reseed (Prisma blocks AI agents: the user runs it)
+npm run dev -w @railway/api          # API only, http://localhost:4000 (curl walkthrough in README)
 npm run dev                          # api + web
 npm run lint && npm run typecheck    # must pass before every commit
 npm run format                       # Prettier (docs/ and CLAUDE.md are excluded)

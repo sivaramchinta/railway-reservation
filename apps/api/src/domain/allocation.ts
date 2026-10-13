@@ -84,3 +84,12 @@ function assertIntegerInRange(name: string, value: number, min: number, max: num
     );
   }
 }
+
+/**
+ * A waitlisted passenger's CURRENT position ("WL 7, now WL 3"): 1 + how many
+ * passengers still waiting in the same class hold a smaller (earlier) number.
+ * `stillWaiting` = waitlist numbers of everyone in the class still WAITLISTED.
+ */
+export function rankInWaitlist(waitlistNumber: number, stillWaiting: readonly number[]): number {
+  return 1 + stillWaiting.filter((n) => n < waitlistNumber).length;
+}

@@ -4,6 +4,7 @@ import {
   decideStatuses,
   freeSeatsForNewBooking,
   MAX_PASSENGERS_PER_BOOKING,
+  rankInWaitlist,
 } from './allocation';
 import { InvariantViolationError } from './errors';
 
@@ -96,5 +97,19 @@ describe('decideStatuses', () => {
     ['next waitlist number 0', { nextWaitlistNumber: 0 }],
   ])('rejects impossible input: %s', (_label, override) => {
     expect(() => decideStatuses({ ...base, ...override })).toThrow(InvariantViolationError);
+  });
+});
+
+describe('rankInWaitlist', () => {
+  it('is the permanent number when nobody ahead has left', () => {
+    expect(rankInWaitlist(3, [1, 2, 3, 4])).toBe(3);
+  });
+
+  it('moves up as people ahead cancel: WL 7 with WL 1, 3, 5 gone is now WL 4', () => {
+    expect(rankInWaitlist(7, [2, 4, 6, 7, 8])).toBe(4);
+  });
+
+  it('is 1 for the first person still waiting', () => {
+    expect(rankInWaitlist(9, [9, 12])).toBe(1);
   });
 });

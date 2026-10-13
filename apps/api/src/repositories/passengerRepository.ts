@@ -56,3 +56,21 @@ export async function cancelActivePassengers(tx: TxClient, bookingId: bigint): P
   });
   return result.count;
 }
+
+/** Waitlist numbers of everyone still WAITLISTED, per class of a run (for "now WL n"). */
+export async function stillWaitingByClass(
+  tx: TxClient,
+  runId: number,
+): Promise<Map<string, number[]>> {
+  const rows = await tx.$queryRaw<{ class_code: string; waitlist_number: number }[]>`
+    SELECT b.class_code, p.waitlist_number
+    FROM passenger p JOIN booking b ON b.id = p.booking_id
+    WHERE b.train_run_id = ${runId} AND p.status = 'WAITLISTED'`;
+  const byClass = new Map<string, number[]>();
+  for (const row of rows) {
+    const numbers = byClass.get(row.class_code) ?? [];
+    numbers.push(row.waitlist_number);
+    byClass.set(row.class_code, numbers);
+  }
+  return byClass;
+}
