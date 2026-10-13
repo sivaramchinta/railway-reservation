@@ -118,8 +118,9 @@ differs from what you expect, check its docs rather than guessing.
 - No `any`, no `@ts-ignore`, no non-null `!` without a comment saying why.
 - Errors are a typed `AppError(code, httpStatus)`; one Express error middleware
   maps them. Error codes: BOOKING_CLOSED 409, CHART_LOCKED 409,
-  WINDOW_STILL_OPEN 409, VALIDATION_FAILED 422, NOT_FOUND 404,
-  UNAUTHENTICATED 401, FORBIDDEN 403.
+  WINDOW_STILL_OPEN 409, INVALID_WINDOW_TRANSITION 409 (admin open/close not
+  allowed from the current state; see DESIGN_SPEC §2), VALIDATION_FAILED 422,
+  NOT_FOUND 404, UNAUTHENTICATED 401, FORBIDDEN 403.
 - Booking status (Confirmed / Partially confirmed / Waitlisted / Cancelled) is
   DERIVED from passengers. Never store it.
 

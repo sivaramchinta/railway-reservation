@@ -65,3 +65,30 @@ export async function dbNow(tx: TxClient): Promise<Date> {
   if (row === undefined) throw new Error('SELECT clock_timestamp() returned no row');
   return row.now;
 }
+
+export interface RunWindowUpdate {
+  chartStatus: ChartStatus;
+  bookingOpensAt?: Date;
+  bookingClosesAt?: Date;
+  chartPreparedAt?: Date;
+}
+
+/** Writes a new chart status (and window times). Callers must hold the train_run row lock. */
+export async function updateRun(tx: TxClient, runId: number, data: RunWindowUpdate): Promise<void> {
+  await tx.trainRun.update({ where: { id: runId }, data });
+}
+
+export interface RunWithTrain extends RunRecord {
+  journeyDate: Date;
+  trainNumber: string;
+  trainName: string;
+}
+
+export async function getRunWithTrain(tx: TxClient, runId: number): Promise<RunWithTrain> {
+  const run = await tx.trainRun.findUniqueOrThrow({
+    where: { id: runId },
+    select: { ...runSelect, journeyDate: true, train: { select: { number: true, name: true } } },
+  });
+  const { train, ...rest } = run;
+  return { ...rest, trainNumber: train.number, trainName: train.name };
+}

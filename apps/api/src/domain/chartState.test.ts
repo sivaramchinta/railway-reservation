@@ -4,7 +4,10 @@ import {
   canTransitionChart,
   CHART_STATUSES,
   type ChartStatus,
+  decideWindowAction,
   effectiveChartStatus,
+  type WindowAction,
+  type WindowDecision,
 } from './chartState';
 import { InvariantViolationError } from './errors';
 
@@ -86,4 +89,19 @@ describe('effectiveChartStatus', () => {
       }
     },
   );
+});
+
+describe('decideWindowAction (admin open/close)', () => {
+  it.each<[ChartStatus, WindowAction, WindowDecision]>([
+    ['NOT_YET_OPEN', 'OPEN', { kind: 'APPLY', from: 'NOT_YET_OPEN', to: 'OPEN' }],
+    ['NOT_YET_OPEN', 'CLOSE', { kind: 'REJECT', code: 'INVALID_WINDOW_TRANSITION' }],
+    ['OPEN', 'OPEN', { kind: 'NO_OP' }],
+    ['OPEN', 'CLOSE', { kind: 'APPLY', from: 'OPEN', to: 'CLOSED' }],
+    ['CLOSED', 'OPEN', { kind: 'REJECT', code: 'INVALID_WINDOW_TRANSITION' }],
+    ['CLOSED', 'CLOSE', { kind: 'NO_OP' }],
+    ['CHART_LOCKED', 'OPEN', { kind: 'REJECT', code: 'CHART_LOCKED' }],
+    ['CHART_LOCKED', 'CLOSE', { kind: 'REJECT', code: 'CHART_LOCKED' }],
+  ])('effective %s + %s → %o', (effective, action, expected) => {
+    expect(decideWindowAction(effective, action)).toEqual(expected);
+  });
 });
