@@ -143,7 +143,8 @@ public PNR lookup, waitlist cap, per-passenger cancellation.
 
 ```bash
 cp .env.example .env                 # once; Prisma 7 needs DATABASE_URL even to generate
-docker compose up -d db              # start Postgres
+docker compose up --build            # everything: db + api + web → http://localhost:3000
+docker compose up -d db              # only Postgres (local dev)
 npm install                          # install all workspaces
 npm run db:migrate                   # prisma migrate deploy
 npm run db:generate                  # prisma generate → apps/api/src/generated/prisma (typecheck runs it too)
@@ -155,6 +156,7 @@ npm run lint && npm run typecheck    # must pass before every commit
 npm run format                       # Prettier (docs/ and CLAUDE.md are excluded)
 npm test                             # all tests
 npm run test:coverage                # api tests + 100% coverage gate on src/domain/
+npm run load-test -w @railway/api -- http://localhost:4000 500   # needs a fresh DB
 ```
 
 ## Repository layout

@@ -1,5 +1,47 @@
 # AI Usage
 
+## Summary
+
+**How AI was used.** The design (requirements → invariants → state model →
+concurrency model → schema → API) was written before any code, with Claude as a
+sparring partner and ChatGPT as a second reviewer (see
+`docs/reference/system-design.md`). Implementation was pair-programmed with
+Claude Code, one task at a time, following `docs/IMPLEMENTATION_PLAN.md`. After
+each phase, Claude wrote a learning checkpoint (`docs/learning/phase-N.md`) and
+quizzed me on it, so that I can explain every file.
+
+**How the output was verified** (the rule: a claim isn't done until a check
+could have failed):
+
+- Lint (type-aware, no `any`, no `console`, no `Math.random`), typecheck, and
+  297 tests after every task. The tests run against **real PostgreSQL**, with the
+  SQL invariant checker after each one.
+- **Tests were made to fail on purpose:** removing `FOR UPDATE` (64–68 confirmed
+  in a 40-seat class), dropping a CHECK constraint, removing the cancellation
+  lock, adding an untested domain file. Each time, the expected test failed.
+- Library behaviour was **checked, not assumed**: Prisma 7, Next.js 16 and Zod 4
+  docs were read from the installed packages; raw-query return types, the pool
+  size, the isolation level and cookie forwarding through rewrites were probed
+  against the running system.
+- End to end: the curl walkthrough, a browser QA checklist (17/17 in headless
+  Chrome), a fresh-clone `docker compose up`, and a 500-user load test.
+
+**Where verification changed the result.**
+
+- Postgres `now()` is frozen at transaction start. It was demonstrated with
+  `pg_sleep`, and I approved switching to `clock_timestamp()`.
+- TypeScript 7 and ESLint 10 aren't supported by the tooling yet, so they were
+  pinned to 6 and 9.
+- Prisma's `latest` tag was a release candidate, so the stable 7.10 was chosen.
+- The pg adapter ignores `connection_limit`, so the pool size is now passed
+  explicitly.
+- Several test-setup bugs were caught by the database's own constraints.
+- Two expected values in Claude's own tests were wrong, and were corrected after
+  re-deriving them by hand.
+- Prisma refused to let the agent run `migrate reset`; that's left to me.
+
+## Log
+
 | Date       | Task                                                | What AI produced                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | How I validated |
 | ---------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | 2026-10-12 | Phase 0: workspace skeleton                         | npm workspaces (api, web, shared), tsconfig.base.json with strict flags, ESLint (strictTypeChecked, no-any, no-console, Next.js for web) + Prettier, docker-compose `db` (postgres:16), .env.example, pinned TypeScript 6.0 / ESLint 9 for tool compatibility. Verify: `npm run lint` fails on an `any` or `console.log`; `docker compose ps` shows db healthy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |                 |
@@ -29,3 +71,6 @@
 | 2026-10-13 | Phase 7.1: frontend foundation                      | Next.js 16.4 App Router + Tailwind v4 (PostCSS); `next.config.ts` rewrites `/api/*` → Express (one origin, no CORS; verified cookies pass both ways); `lib/api.ts` typed fetch parsing every response with the shared Zod schemas, `ApiError`; `lib/messages.ts` code → message map; `lib/queries.ts` TanStack Query hooks (run + bookings polled every 5 s, mutations invalidate); `providers.tsx`. Read the bundled Next 16 docs (async `params`, `next lint` removed, Turbopack default).                                                                                                                                                                                                                                                                                                                                                                                                      |                 |
 | 2026-10-13 | Phase 7.2: screens                                  | Header + chart-state stepper on every page; sign-in; booking form (class select with fairness-aware availability, 1–6 passenger rows, inline Zod validation, Idempotency-Key per attempt: reused on retry, new on edit/success); booking result (big PNR, derived status, split note, "WL n (now WL m)", seat label); My bookings (Cancel only while OPEN/CLOSED, confirm dialog); admin panel (state-aware buttons, chart summary, seat map). `SubmitEvent` instead of deprecated `FormEvent`.                                                                                                                                                                                                                                                                                                                                                                                                   |                 |
 | 2026-10-13 | Phase 7.3: browser QA                               | Drove the README checklist in headless Chrome (playwright-core in scratchpad, against a throwaway `railway_qa` DB): 17/17 checks, no JS errors, screenshots reviewed. Two script bugs fixed on the way (my selector; my expected seat count — the app's 17/20 was right). Stepper update measured at ~4.95 s (polling every 5 s per spec, so worst case ≈ 5 s + one request). Verify: run the README checklist yourself in two browser profiles.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |                 |
+| 2026-10-14 | Phase 8.1: Docker Compose                           | Multi-stage `Dockerfile` (targets `api`: migrate + seed + serve; `web`: `next build` with `API_ORIGIN` baked in), `.dockerignore`, compose with `db`/`api`/`web`, healthchecks, demo defaults. Verified from a fresh copy (no `.env`, no lockfile): stack up, browser checklist 17/17.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |                 |
+| 2026-10-14 | Phase 8.2: load test + CI                           | `apps/api/scripts/loadTest.ts` (500 concurrent bookings over HTTP): 201×500, exactly 40 CNF, 1.33–1.37 s, p99 ≈ 1.3 s, latency clustering explained only as a hypothesis. `.github/workflows/ci.yml` (lint, typecheck, tests + coverage gate, web build): **not yet run**, since the repo isn't on GitHub.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |                 |
+| 2026-10-14 | Phase 8.3: README + AI_USAGE                        | Full README (run, architecture, invariants, data model, concurrency design + remove-the-lock proof, load test, chart prep, PNR, trade-offs, scaling, testing strategy, QA checklist, API, curl) and this summary. Verify: follow the README from a fresh clone yourself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |                 |

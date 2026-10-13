@@ -1,3 +1,6 @@
+# `docker compose up --build` runs everything: PostgreSQL, the API and the web app.
+# Then open http://localhost:3000 (admin: admin@example.com).
+# For local development you can also start only the database: `docker compose up -d db`.
 services:
   db:
     image: postgres:16
@@ -14,6 +17,45 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      DATABASE_URL: postgresql://railway:railway@db:5432/railway?schema=public&connection_limit=20
+      # Demo defaults; override in your shell or a .env file next to this compose file.
+      SESSION_SECRET: ${SESSION_SECRET:-local-demo-secret-change-me-0123456789}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
+      PORT: '4000'
+    ports:
+      - '4000:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/api/run').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        API_ORIGIN: http://api:4000
+    ports:
+      - '3000:3000'
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   db-data:

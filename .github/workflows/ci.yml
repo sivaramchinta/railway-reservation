@@ -1,0 +1,30 @@
+# Blocks merges on lint, type or test failures (IMPLEMENTATION_PLAN Phase 8, optional).
+# The test job needs Docker for testcontainers; GitHub's ubuntu runners provide it.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install
+        run: |
+          cp .env.example .env
+          npm install --no-audit --no-fund
+      - name: Typecheck (also generates the Prisma client)
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Tests against real PostgreSQL + 100% domain coverage gate
+        run: npm run test:coverage
+      - name: Build the web app
+        run: npm run build -w @railway/web

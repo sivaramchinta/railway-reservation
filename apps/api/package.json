@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "load-test": "tsx scripts/loadTest.ts"
   },
   "devDependencies": {
     "@jest/globals": "^30.5.2",
