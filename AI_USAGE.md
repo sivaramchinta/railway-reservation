@@ -4,11 +4,12 @@
 
 **How AI was used.** The design (requirements → invariants → state model →
 concurrency model → schema → API) was written before any code, with Claude as a
-sparring partner and ChatGPT as a second reviewer (see
-`docs/reference/system-design.md`). Implementation was pair-programmed with
-Claude Code, one task at a time, following `docs/IMPLEMENTATION_PLAN.md`. After
-each phase, Claude wrote a learning checkpoint (`docs/learning/phase-N.md`) and
-quizzed me on it, so that I can explain every file.
+sparring partner and ChatGPT as a second reviewer. Implementation was
+pair-programmed with Claude Code, one task at a time, following a phased
+implementation plan. After each phase, Claude wrote a learning checkpoint and
+quizzed me on it, so that I can explain every file. (The design spec, plan and
+learning notes are kept private; "§n" and "edge case n" in the log below refer
+to sections of that spec.)
 
 **How the output was verified** (the rule: a claim isn't done until a check
 could have failed):

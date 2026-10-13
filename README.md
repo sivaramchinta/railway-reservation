@@ -153,7 +153,8 @@ nobody can grab it first. Group bookings are split per passenger (4 people with
 start, and a booking can queue for the lock for seconds. The booking insert also
 sets `created_at = clock_timestamp()`, so booking order equals decision order,
 which the fair-ordering check and seat matching rely on. (A deliberate deviation
-from the original spec, recorded in `docs/DESIGN_SPEC.md` §4.)
+from the original design, adopted after demonstrating the difference with
+`pg_sleep`.)
 
 **Idempotency:** the client sends one `Idempotency-Key` per booking attempt,
 stored under `UNIQUE(user_id, idempotency_key)`.
@@ -308,8 +309,8 @@ a single writer) stays the only authority on seats.
 | Browser     | README checklist                                            | Ran in headless Chrome against the Docker stack                                                                                        | 17 checks   |
 | Load        | `scripts/loadTest.ts`                                       | 500 simultaneous bookings                                                                                                              | 2 runs      |
 
-- **The invariant checker** (`apps/api/test/invariants.ts`) runs the SQL queries
-  from `docs/DESIGN_SPEC.md` §10 after **every** integration and concurrency
+- **The invariant checker** (`apps/api/test/invariants.ts`) runs six SQL
+  queries, one per invariant rule, after **every** integration and concurrency
   test. Every query must return zero rows.
 - **Concurrency tests use separate connections** (pool 150 for 120 requests). A
   shared connection would quietly serialize everything and let a broken
@@ -407,7 +408,6 @@ apps/api/          Express API: src/{domain,services,repositories,routes,http}, 
 apps/web/          Next.js App Router frontend: app/, components/, lib/
 packages/shared/   Zod schemas + types: the API contract
 prisma/            schema.prisma, migrations/ (with hand-added CHECKs), seed.ts
-docs/              DESIGN_SPEC.md, IMPLEMENTATION_PLAN.md, learning/phase-N.md, reference/
 Dockerfile  docker-compose.yml  .github/workflows/ci.yml  AI_USAGE.md
 ```
 
