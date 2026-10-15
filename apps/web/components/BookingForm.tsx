@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { type SubmitEvent, useState } from 'react';
 import { messageFor } from '../lib/messages';
 import { useCreateBooking, useRun } from '../lib/queries';
+import { Select } from './Select';
 import { buttonClass, Card, ErrorText } from './ui';
 
 interface Row {
@@ -18,11 +19,16 @@ interface Row {
 
 const newRow = (): Row => ({ id: crypto.randomUUID(), name: '' });
 
-/** "AC — 3 left" or "AC — waitlist (you'd be WL 4)". Fairness-aware: `available` is 0 while anyone waits. */
-function classLabel(c: RunSummaryDto['classes'][number]): string {
-  return c.available > 0
-    ? `${c.name} (${c.code}) — ${c.available} left`
-    : `${c.name} (${c.code}) — waitlist (${c.waitlistLength} waiting)`;
+type ClassSummary = RunSummaryDto['classes'][number];
+
+/** "Sleeper (SL)", or just "AC" when the name already is the code. */
+function className(c: ClassSummary): string {
+  return c.name === c.code ? c.name : `${c.name} (${c.code})`;
+}
+
+/** "3 left" or "Waitlist · 2 waiting". Fairness-aware: `available` is 0 while anyone waits. */
+function availability(c: ClassSummary): string {
+  return c.available > 0 ? `${c.available} left` : `Waitlist · ${c.waitlistLength} waiting`;
 }
 
 export function BookingForm() {
@@ -82,23 +88,19 @@ export function BookingForm() {
         </p>
       )}
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Class</span>
-          <select
-            value={selectedClass}
-            onChange={(e) => {
-              setClassCode(e.target.value);
-              edited();
-            }}
-            className="rounded-md border border-gray-300 px-3 py-2"
-          >
-            {run.classes.map((c) => (
-              <option key={c.code} value={c.code}>
-                {classLabel(c)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Class"
+          value={selectedClass}
+          options={run.classes.map((c) => ({
+            value: c.code,
+            label: className(c),
+            detail: availability(c),
+          }))}
+          onChange={(code) => {
+            setClassCode(code);
+            edited();
+          }}
+        />
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">
