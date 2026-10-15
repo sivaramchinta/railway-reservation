@@ -45,7 +45,7 @@ npm run dev                                # API :4000 + web http://localhost:30
 | Command                                                          | What it does                                                         |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `npm run lint` / `npm run typecheck`                             | ESLint (type-aware, no `any`, no `console`) / `tsc` in every package |
-| `npm test`                                                       | All 297 tests (starts a throwaway PostgreSQL via testcontainers)     |
+| `npm test`                                                       | All 299 tests (starts a throwaway PostgreSQL via testcontainers)     |
 | `npm run test:coverage`                                          | Same, plus the 100% coverage gate on the pure domain layer           |
 | `npm run db:reset`                                               | Wipe the dev database, migrate, reseed                               |
 | `npm run load-test -w @railway/api -- http://localhost:4000 500` | 500 concurrent bookings (needs a fresh DB)                           |

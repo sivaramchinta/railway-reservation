@@ -28,6 +28,17 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+/** Confirms `count` passengers in a class one booking at a time, BEFORE a race starts. */
+async function prefill(classCode: string, count: number): Promise<void> {
+  const [user = 0] = await createUsers(1);
+  for (let left = count; left > 0; left -= 6) {
+    const passengers = Array.from({ length: Math.min(6, left) }, (_, i) => ({
+      name: `Filler ${i + 1}`,
+    }));
+    await createBooking(user, { classCode, passengers }, randomUUID());
+  }
+}
+
 describe('concurrent bookings', () => {
   it('edge case 1: 120 concurrent single-passenger bookings on SL (capacity 40) → exactly 40 CONFIRMED, WL 1..80', async () => {
     const users = await createUsers(120);
@@ -43,6 +54,53 @@ describe('concurrent bookings', () => {
     expect(sl.confirmed).toBe(40);
     expect(sl.waitlistNumbers).toEqual(oneTo(80)); // unique and gap-free
     expect(sl.nextWaitlistNumber).toBe(81);
+  });
+
+  it('edge case 1, the LAST seat: AC filled to 19/20, then 100 users race → exactly one CONFIRMED, WL 1..99', async () => {
+    await prefill('AC', 19);
+    const users = await createUsers(100);
+
+    const results = await Promise.all(
+      users.map((user) =>
+        createBooking(user, { classCode: 'AC', passengers: [{ name: 'P' }] }, randomUUID()),
+      ),
+    );
+
+    // What callers were told: one winner, everyone else waitlisted.
+    expect(results.filter((r) => r.booking.status === 'CONFIRMED')).toHaveLength(1);
+    expect(results.filter((r) => r.booking.status === 'WAITLISTED')).toHaveLength(99);
+    // What the database says: full, never over, waitlist unique and gap-free.
+    const ac = await outcome('AC');
+    expect(ac.confirmed).toBe(20);
+    expect(ac.waitlistNumbers).toEqual(oneTo(99));
+    expect(ac.nextWaitlistNumber).toBe(100);
+  });
+
+  it('the last seat raced by groups of 2: exactly one group is split (CNF + WL 1), the other 29 fully waitlisted', async () => {
+    await prefill('AC', 19);
+    const users = await createUsers(30);
+
+    const results = await Promise.all(
+      users.map((user) =>
+        createBooking(
+          user,
+          { classCode: 'AC', passengers: [{ name: 'A' }, { name: 'B' }] },
+          randomUUID(),
+        ),
+      ),
+    );
+
+    const split = results.filter((r) => r.booking.status === 'PARTIALLY_CONFIRMED');
+    expect(split).toHaveLength(1);
+    // The winner decided first, so its second passenger got the first waitlist number.
+    expect(split[0]?.booking.passengers.map((p) => [p.status, p.waitlistNumber])).toEqual([
+      ['CONFIRMED', null],
+      ['WAITLISTED', 1],
+    ]);
+    expect(results.filter((r) => r.booking.status === 'WAITLISTED')).toHaveLength(29);
+    const ac = await outcome('AC');
+    expect(ac.confirmed).toBe(20);
+    expect(ac.waitlistNumbers).toEqual(oneTo(59));
   });
 
   it('mixed group sizes concurrently: capacity never exceeded, waitlist gap-free', async () => {
